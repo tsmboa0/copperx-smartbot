@@ -1,5 +1,5 @@
 import { InlineKeyboard } from "grammy";
-import { Wallet } from "../utils/types/types";
+import { Wallet } from "./types";
 import { getNetworkName } from "./constants";
 
 export const createMainMenuKeyboard = (isLoggedIn: boolean = false) => {

@@ -5,7 +5,7 @@ import {
   EmailOTPAuthenticate,
   UserProfile,
   KYCStatus,
-} from "../utils/types/types";
+} from "../utils/types";
 import { AppDataSource } from "../config/database";
 import { User } from "../entities/user.entity";
 
@@ -76,7 +76,9 @@ class AuthService {
       { headers: await this.getHeaders(chatId) }
     );
 
-    Object.assign(user, response.data);
+    // Only update non-sensitive fields
+    user.email = response.data.email;
+    user.name = response.data.firstName + " " + response.data.lastName;
     await this.userRepository.save(user);
 
     return response.data;
@@ -113,7 +115,9 @@ class AuthService {
     if (!user) {
       throw new Error("User not found");
     }
-    return user.accessToken;
+
+    // Decrypt the token before using it
+    return user.getDecryptedAccessToken();
   }
 }
 

@@ -6,7 +6,7 @@ import {
   createBackToMenuKeyboard,
   createConfirmationKeyboard,
 } from "../utils/keyboards";
-import { BankQuote } from "../utils/types/types";
+import { BankQuote } from "../utils/types";
 
 export class TransferHandler {
   private static instance: TransferHandler;

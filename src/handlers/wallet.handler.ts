@@ -1,7 +1,7 @@
 import { Context } from "grammy";
 import { authService } from "../services/auth.service";
 import axios from "axios";
-import { Wallet } from "../utils/types/types";
+import { Wallet } from "../utils/types";
 import { getNetworkName } from "../utils/constants";
 import {
   createWalletListKeyboard,
