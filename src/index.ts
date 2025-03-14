@@ -345,5 +345,16 @@ bot.callbackQuery("cancel", async (ctx) => {
   transferHandler["userStates"].delete(chatId);
 });
 
+bot.callbackQuery(/^select_payee:/, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const email = ctx.callbackQuery.data.split(":")[1];
+  await transferHandler.handlePayeeSelection(ctx, email);
+});
+
+bot.callbackQuery("add_new_recipient", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await transferHandler.handleAddNewRecipient(ctx);
+});
+
 console.log("Starting the bot...");
 bot.start();
