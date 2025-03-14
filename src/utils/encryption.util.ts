@@ -2,9 +2,15 @@ import * as crypto from "crypto";
 
 export class EncryptionUtil {
   private static readonly algorithm = "aes-256-cbc";
-  private static readonly key =
-    process.env.ENCRYPTION_KEY || "default-encryption-key-must-be-32-chars";
-  private static readonly iv = crypto.randomBytes(16);
+
+  private static getKey(): Buffer {
+    const envKey =
+      process.env.ENCRYPTION_KEY || "this-is-a-secure-32-char-encryption-key";
+    if (Buffer.from(envKey).length !== 32) {
+      return crypto.createHash("sha256").update(String(envKey)).digest();
+    }
+    return Buffer.from(envKey);
+  }
 
   /**
    * Encrypts a string using AES-256-CBC
@@ -12,16 +18,14 @@ export class EncryptionUtil {
    * @returns The encrypted text as a base64 string with IV prepended
    */
   static encrypt(text: string): string {
+    // Generate a random IV for each encryption
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(
-      this.algorithm,
-      Buffer.from(this.key),
-      iv
-    );
+    const cipher = crypto.createCipheriv(this.algorithm, this.getKey(), iv);
 
     let encrypted = cipher.update(text, "utf8", "hex");
     encrypted += cipher.final("hex");
 
+    // Prepend the IV to the encrypted data (IV needs to be stored for decryption)
     return iv.toString("hex") + ":" + encrypted;
   }
 
@@ -31,19 +35,31 @@ export class EncryptionUtil {
    * @returns The decrypted text
    */
   static decrypt(encryptedText: string): string {
-    const textParts = encryptedText.split(":");
-    const iv = Buffer.from(textParts[0], "hex");
-    const encryptedData = textParts[1];
+    try {
+      // Split the IV and encrypted data
+      const textParts = encryptedText.split(":");
+      if (textParts.length !== 2) {
+        throw new Error("Invalid encrypted text format");
+      }
 
-    const decipher = crypto.createDecipheriv(
-      this.algorithm,
-      Buffer.from(this.key),
-      iv
-    );
+      const iv = Buffer.from(textParts[0], "hex");
+      const encryptedData = textParts[1];
 
-    let decrypted = decipher.update(encryptedData, "hex", "utf8");
-    decrypted += decipher.final("utf8");
+      const decipher = crypto.createDecipheriv(
+        this.algorithm,
+        this.getKey(),
+        iv
+      );
 
-    return decrypted;
+      let decrypted = decipher.update(encryptedData, "hex", "utf8");
+      decrypted += decipher.final("utf8");
+
+      return decrypted;
+    } catch (error) {
+      console.error("Decryption error:", error);
+      // If decryption fails, return the original text (for backward compatibility)
+      // This helps with existing non-encrypted tokens in the database
+      return encryptedText;
+    }
   }
 }

@@ -50,6 +50,11 @@ bot.api.setMyCommands([
   { command: "send_wallet", description: "Send funds to external wallet" },
   { command: "withdraw", description: "Withdraw funds to bank account" },
   { command: "transfers", description: "View recent transfers" },
+  { command: "notifications", description: "Manage deposit notifications" },
+  {
+    command: "simulate_deposit",
+    description: "Simulate a deposit notification",
+  },
 ]);
 
 bot.command("start", async (ctx) => {

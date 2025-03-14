@@ -17,6 +17,7 @@ export const createMainMenuKeyboard = (isLoggedIn: boolean = false) => {
       .text("📥 Deposit", "deposit")
       .row()
       .text("📊 Transactions", "transfers")
+      .text("🔔 Notifications", "notifications")
       .row()
       .text("🔓 Logout", "logout");
   } else {
