@@ -10,7 +10,9 @@ import { EncryptionUtil } from "../utils/encryption.util";
 
 @Entity("users")
 export class User {
-  @PrimaryColumn()
+  @PrimaryColumn({
+    type: "bigint",
+  })
   chatId!: number;
 
   @Column()
