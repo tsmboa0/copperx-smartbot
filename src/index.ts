@@ -12,6 +12,7 @@ import {
 import { authService } from "./services/auth.service";
 import axios from "axios";
 import { InlineKeyboard } from "grammy";
+import http from "http";
 
 if (!process.env.BOT_TOKEN) {
   throw new Error("BOT_TOKEN is not defined in the environment variables");
@@ -360,6 +361,40 @@ bot.callbackQuery("add_new_recipient", async (ctx) => {
 
 bot.catch((err) => {
   console.error("Bot encountered an error:", err);
+});
+
+const server = http.createServer((req, res) => {
+  if (req.url === "/health" || req.url === "/") {
+    const uptime = process.uptime();
+    const uptimeFormatted = {
+      days: Math.floor(uptime / (24 * 60 * 60)),
+      hours: Math.floor((uptime % (24 * 60 * 60)) / (60 * 60)),
+      minutes: Math.floor((uptime % (60 * 60)) / 60),
+      seconds: Math.floor(uptime % 60),
+    };
+
+    const response = {
+      status: "ok",
+      message: "Bot is running",
+      uptime: uptimeFormatted,
+      timestamp: new Date().toISOString(),
+    };
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(response, null, 2));
+  } else {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not Found");
+  }
+});
+
+server.listen(3000, () => {
+  console.log("Health check server running on port 3000");
+  console.log("Access the health endpoint at: http://localhost:3000/health");
+});
+
+server.on("error", (error) => {
+  console.error("Health check server error:", error);
 });
 
 console.log("Starting the bot...");
