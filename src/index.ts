@@ -398,10 +398,4 @@ server.on("error", (error) => {
 });
 
 console.log("Starting the bot...");
-bot.start().catch((err) => {
-  console.error("Error starting the bot:", err);
-  console.log("Attempting to restart the bot...");
-  setTimeout(() => {
-    bot.start().catch(console.error);
-  }, 5000);
-});
+bot.start();
