@@ -23,7 +23,9 @@ AppDataSource.initialize()
   })
   .catch((error) => {
     console.error("Error connecting to database:", error);
-    process.exit(1);
+    console.log(
+      "Continuing without database connection. Some features may be limited."
+    );
   });
 
 const bot = new Bot(process.env.BOT_TOKEN);
@@ -356,5 +358,15 @@ bot.callbackQuery("add_new_recipient", async (ctx) => {
   await transferHandler.handleAddNewRecipient(ctx);
 });
 
+bot.catch((err) => {
+  console.error("Bot encountered an error:", err);
+});
+
 console.log("Starting the bot...");
-bot.start();
+bot.start().catch((err) => {
+  console.error("Error starting the bot:", err);
+  console.log("Attempting to restart the bot...");
+  setTimeout(() => {
+    bot.start().catch(console.error);
+  }, 5000);
+});
