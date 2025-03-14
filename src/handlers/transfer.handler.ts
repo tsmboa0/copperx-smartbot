@@ -22,6 +22,7 @@ export class TransferHandler {
       confirmationPending?: boolean;
       bankAccountId?: string;
       quote?: BankQuote;
+      step?: string;
     }
   > = new Map();
 
@@ -38,38 +39,31 @@ export class TransferHandler {
     const chatId = ctx.from?.id;
     if (!chatId) return;
 
-    if (!(await authService.isAuthenticated(chatId))) {
+    const isAuthenticated = await authService.isAuthenticated(chatId);
+    if (!isAuthenticated) {
       await ctx.reply(
-        "🔒 This feature requires login!\n\n" +
-          "Please use /login to connect your account first",
+        "⚠️ You need to be logged in to send funds.\n\n" +
+          "Please use /login to authenticate first.",
         {
-          reply_markup: new InlineKeyboard().text("🔐 Login", "login"),
+          reply_markup: createBackToMenuKeyboard(),
         }
       );
       return;
     }
 
-    this.userStates.set(chatId, { action: "email_transfer" });
+    this.userStates.set(chatId, {
+      action: "email_transfer",
+      step: "recipient",
+      confirmationPending: false,
+    });
 
-    if (ctx.callbackQuery) {
-      await ctx.editMessageText(
-        "📧 *Send Funds via Email*\n\n" +
-          "Please enter the recipient's email address:",
-        {
-          parse_mode: "Markdown",
-          reply_markup: createBackToMenuKeyboard(),
-        }
-      );
-    } else {
-      await ctx.reply(
-        "📧 *Send Funds via Email*\n\n" +
-          "Please enter the recipient's email address:",
-        {
-          parse_mode: "Markdown",
-          reply_markup: createBackToMenuKeyboard(),
-        }
-      );
-    }
+    await ctx.reply(
+      "📧 *Send to Email*\n\n" + "Please enter the recipient's email address:",
+      {
+        parse_mode: "Markdown",
+        reply_markup: createBackToMenuKeyboard(),
+      }
+    );
   }
 
   public async handleWalletTransfer(ctx: Context): Promise<void> {
@@ -332,7 +326,15 @@ ${transfers
     return `${getTypeEmoji(tx.type)} *${type}*
 Amount: ${amount}
 To: ${tx.destinationAccount.walletAddress ?? tx.destinationAccount.bankName}
-Status: ${status === "success" ? "✅" : status === "pending" ? "⏳" : "❌"}
+Status: ${
+      status === "success"
+        ? "✅"
+        : status === "pending" ||
+          status === "initiated" ||
+          status === "processing"
+        ? "⏳"
+        : "❌"
+    }
 Date: ${date}${tx.hash ? `\nHash: \`${tx.hash}\`` : ""}\n`;
   })
   .join("\n")}
@@ -660,6 +662,135 @@ ${
           .join("\n")
       )
       .join("\n");
+  }
+
+  private async handleAmountInput(ctx: Context, text: string): Promise<void> {
+    const chatId = ctx.from?.id;
+    if (!chatId) return;
+
+    const userState = this.userStates.get(chatId);
+    if (!userState) return;
+
+    const amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply(
+        "❌ Invalid amount. Please enter a valid positive number:",
+        {
+          reply_markup: createBackToMenuKeyboard(),
+        }
+      );
+      return;
+    }
+
+    if (userState.symbol === "USDC") {
+      const minAmount = userState.action === "bank_withdrawal" ? 50 : 1;
+      if (amount < minAmount) {
+        await ctx.reply(
+          `❌ Minimum amount for ${
+            userState.action === "bank_withdrawal"
+              ? "bank withdrawals"
+              : "transfers"
+          } is ${minAmount} USDC.\n\n` + "Please enter a larger amount:",
+          {
+            reply_markup: createBackToMenuKeyboard(),
+          }
+        );
+        return;
+      }
+    }
+
+    userState.amount = amount.toString();
+    userState.step = "confirmation";
+    userState.confirmationPending = true;
+    this.userStates.set(chatId, userState);
+
+    await this.sendConfirmation(ctx, {
+      recipient: userState.recipient ?? "",
+      amount: userState.amount ?? "",
+      symbol: userState.symbol ?? "USDC",
+      type: userState.action === "email_transfer" ? "email" : "wallet",
+    });
+  }
+
+  private async handleWalletAmountInput(
+    ctx: Context,
+    text: string
+  ): Promise<void> {
+    const chatId = ctx.from?.id;
+    if (!chatId) return;
+
+    const userState = this.userStates.get(chatId);
+    if (!userState) return;
+
+    const amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply(
+        "❌ Invalid amount. Please enter a valid positive number:",
+        {
+          reply_markup: createBackToMenuKeyboard(),
+        }
+      );
+      return;
+    }
+
+    if (userState.symbol === "USDC" && amount < 1) {
+      await ctx.reply(
+        "❌ Minimum amount for wallet transfers is 1 USDC.\n\n" +
+          "Please enter a larger amount:",
+        {
+          reply_markup: createBackToMenuKeyboard(),
+        }
+      );
+      return;
+    }
+
+    userState.amount = amount.toString();
+    userState.step = "confirmation";
+    userState.confirmationPending = true;
+    this.userStates.set(chatId, userState);
+
+    await this.sendConfirmation(ctx, {
+      recipient: userState.recipient ?? "",
+      amount: userState.amount ?? "",
+      symbol: userState.symbol ?? "USDC",
+      type: "wallet",
+    });
+  }
+
+  public async handleBankWithdrawalAmount(
+    ctx: Context,
+    text: string
+  ): Promise<void> {
+    const chatId = ctx.from?.id;
+    if (!chatId) return;
+
+    const userState = this.userStates.get(chatId);
+    if (!userState) return;
+
+    const amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply(
+        "❌ Invalid amount. Please enter a valid positive number:",
+        {
+          reply_markup: createBackToMenuKeyboard(),
+        }
+      );
+      return;
+    }
+
+    if (userState.symbol === "USDC" && amount < 50) {
+      await ctx.reply(
+        "❌ Minimum amount for bank withdrawals is 50 USDC.\n\n" +
+          "Please enter a larger amount:",
+        {
+          reply_markup: createBackToMenuKeyboard(),
+        }
+      );
+      return;
+    }
+
+    userState.amount = amount.toString();
+    // ... existing code ...
   }
 }
 

@@ -36,7 +36,6 @@ export class EncryptionUtil {
    */
   static decrypt(encryptedText: string): string {
     try {
-      // Split the IV and encrypted data
       const textParts = encryptedText.split(":");
       if (textParts.length !== 2) {
         throw new Error("Invalid encrypted text format");
@@ -57,8 +56,6 @@ export class EncryptionUtil {
       return decrypted;
     } catch (error) {
       console.error("Decryption error:", error);
-      // If decryption fails, return the original text (for backward compatibility)
-      // This helps with existing non-encrypted tokens in the database
       return encryptedText;
     }
   }
