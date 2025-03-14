@@ -9,7 +9,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME || "postgres",
   password: process.env.DB_PASSWORD || "postgres",
   database: process.env.DB_NAME || "copperx_bot",
-  synchronize: process.env.NODE_ENV !== "production",
+  synchronize: true,
   logging: false,
   entities: [User],
   migrations: [],
