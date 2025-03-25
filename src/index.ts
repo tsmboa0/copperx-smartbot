@@ -2,8 +2,9 @@ import "dotenv/config";
 import { Bot } from "grammy";
 import { authHandler } from "./handlers/auth.handler";
 import { walletHandler } from "./handlers/wallet.handler";
-import { AppDataSource } from "./config/database";
 import { transferHandler } from "./handlers/transfer.handler";
+import mongoose from "mongoose";
+import config from "./config/config";
 import {
   createMainMenuKeyboard,
   createSendMoneyKeyboard,
@@ -13,23 +14,20 @@ import { authService } from "./services/auth.service";
 import axios from "axios";
 import { InlineKeyboard } from "grammy";
 import http from "http";
+import { rateLimitMiddleware } from "./middleware/rate-limit";
+import { agentService } from "./services/agent.service";
+import { storeContext, getContext } from "./utils/store";
 
 if (!process.env.BOT_TOKEN) {
   throw new Error("BOT_TOKEN is not defined in the environment variables");
 }
 
-AppDataSource.initialize()
-  .then(() => {
-    console.log("Database connection initialized");
-  })
-  .catch((error) => {
-    console.error("Error connecting to database:", error);
-    console.log(
-      "Continuing without database connection. Some features may be limited."
-    );
-  });
+mongoose.connect(config.dbClient.uri)
+.then(() => console.log("✅ Connected to MongoDB"))
+.catch(err => console.error("❌ MongoDB connection error:", err));
 
 const bot = new Bot(process.env.BOT_TOKEN);
+bot.use(rateLimitMiddleware(10, 60*1000));
 
 bot.api.setMyCommands([
   { command: "start", description: "Start the bot and see available commands" },
@@ -61,13 +59,14 @@ bot.api.setMyCommands([
 ]);
 
 bot.command("start", async (ctx) => {
+  console.log("inside start");
   const chatId = ctx.from?.id;
   if (!chatId) return;
 
   const isLoggedIn = await authService.isAuthenticated(chatId);
   await ctx.reply(
-    "🚀 Welcome to CopperX Bot!\n\n" +
-      "I'm here to help you manage your CopperX account. Choose an option below:",
+    `👋 Welcome ${ctx.from?.first_name}!\n\n` +
+      "I'm CopperX SmartBot designed to help you manage your account seemlessly. Choose an option below or simply ask me a question 😉",
     {
       parse_mode: "Markdown",
       reply_markup: createMainMenuKeyboard(isLoggedIn),
@@ -138,6 +137,8 @@ bot.command("transfers", async (ctx) => {
   await transferHandler.handleRecentTransfers(ctx);
 });
 
+//when messages 
+
 bot.on("message:text", async (ctx) => {
   const chatId = ctx.from?.id;
   if (!chatId) return;
@@ -145,6 +146,23 @@ bot.on("message:text", async (ctx) => {
   const text = ctx.message.text;
 
   if (text.startsWith("/")) return;
+
+  //pass the request to the router.
+  const res = await agentService.router(ctx);
+  if(res && res == "chatbot"){
+    //route to chatbot
+    console.log("res = ",res," calling the assitent agent now!");
+    //store context to be reused later
+    storeContext(ctx.from.id, ctx);
+    console.log('context stored');
+
+    const assistent_res = await agentService.callAgent(ctx);
+
+    console.log("The assistant response is: ",assistent_res)
+    return
+  }
+
+  //if the router's response is "normal", continue in the normal route.
 
   if (authHandler.isWaitingForOTP(chatId)) {
     await authHandler.handleOTPInput(ctx, text);
@@ -164,6 +182,8 @@ bot.on("message:text", async (ctx) => {
 
   await transferHandler.handleTransferInput(ctx);
 });
+
+//callback query
 
 bot.callbackQuery("main_menu", async (ctx) => {
   const chatId = ctx.from?.id;
@@ -399,3 +419,4 @@ server.on("error", (error) => {
 
 console.log("Starting the bot...");
 bot.start();
+export default bot

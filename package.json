@@ -1,5 +1,5 @@
 {
-  "name": "CopperX",
+  "name": "Copperx_smartbot",
   "version": "1.0.0",
   "main": "dist/index.js",
   "license": "MIT",
@@ -10,13 +10,20 @@
     "watch": "tsc -w"
   },
   "dependencies": {
+    "@langchain/community": "^0.3.37",
+    "@langchain/core": "^0.3.43",
+    "@langchain/groq": "^0.2.0",
+    "@langchain/langgraph": "^0.2.57",
     "axios": "^1.8.3",
     "dotenv": "^16.3.1",
-    "grammy": "^1.20.3",
+    "grammy": "^1.35.0",
+    "langchain": "^0.3.19",
+    "mongoose": "^8.12.2",
     "pg": "^8.14.0",
     "pusher-js": "^8.3.0",
     "reflect-metadata": "^0.2.2",
-    "typeorm": "^0.3.21"
+    "typeorm": "^0.3.21",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",

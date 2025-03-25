@@ -6,15 +6,15 @@ import {
   UserProfile,
   KYCStatus,
 } from "../utils/types";
-import { AppDataSource } from "../config/database";
-import { User } from "../entities/user.entity";
+import { userModel } from "../entities/user.entity";
+import { EncryptionUtil } from "../utils/encryption.util";
 
 const API_BASE_URL =
   process.env.COPPERX_API_BASE_URL || "https://income-api.copperx.io";
 
 class AuthService {
   private static instance: AuthService;
-  private userRepository = AppDataSource.getRepository(User);
+  // private userRepository = AppDataSource.getRepository(User);
 
   private constructor() {}
 
@@ -52,34 +52,14 @@ class AuthService {
       `${API_BASE_URL}/api/auth/email-otp/authenticate`,
       payload
     );
-
-    const user = User.fromProfile(
-      chatId,
-      response.data.user,
-      response.data.accessToken,
-      response.data.accessTokenId,
-      new Date(response.data.expireAt)
-    );
-
-    await this.userRepository.save(user);
     return response.data;
   }
 
   public async getProfile(chatId: number): Promise<UserProfile> {
-    const user = await this.userRepository.findOne({ where: { chatId } });
-    if (!user) {
-      throw new Error("User not found");
-    }
-
     const response = await axios.get<UserProfile>(
       `${API_BASE_URL}/api/auth/me`,
       { headers: await this.getHeaders(chatId) }
     );
-
-    // Only update non-sensitive fields
-    user.email = response.data.email;
-    user.name = response.data.firstName + " " + response.data.lastName;
-    await this.userRepository.save(user);
 
     return response.data;
   }
@@ -95,10 +75,11 @@ class AuthService {
   }
 
   public async isAuthenticated(chatId: number): Promise<boolean> {
-    const user = await this.userRepository.findOne({ where: { chatId } });
+    const user =  await userModel.findOne({userId:chatId.toString()});
     if (!user) return false;
 
-    if (new Date() > user.expireAt) {
+    if (!user?.expiresAt || Date.now() > new Date(user?.expiresAt).getTime()) {
+      console.log("user session expired");
       await this.logout(chatId);
       return false;
     }
@@ -107,17 +88,17 @@ class AuthService {
   }
 
   public async logout(chatId: number): Promise<void> {
-    await this.userRepository.delete({ chatId });
+    await userModel.deleteOne({userId:chatId.toString()});
   }
 
   private async getAccessToken(chatId: number): Promise<string> {
-    const user = await this.userRepository.findOne({ where: { chatId } });
+    const user = await userModel.findOne({userId:chatId.toString()});
     if (!user) {
       throw new Error("User not found");
     }
 
     // Decrypt the token before using it
-    return user.getDecryptedAccessToken();
+    return EncryptionUtil.decrypt(user?.encryptedToken!);
   }
 }
 

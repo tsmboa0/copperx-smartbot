@@ -13,6 +13,11 @@ export interface AuthResponse {
   user: UserProfile;
 }
 
+export interface RouterResponse{
+  route:string;
+  type: "email" | 'OTP' | "amount"
+}
+
 export interface UserProfile {
   id: string;
   firstName: string;

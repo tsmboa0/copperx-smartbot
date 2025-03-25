@@ -2,7 +2,9 @@ import { Context } from "grammy";
 import { authService } from "../services/auth.service";
 import { InlineKeyboard } from "grammy";
 import axios from "axios";
-import { createBackToMenuKeyboard } from "../utils/keyboards";
+import { createBackToMenuKeyboard, createMainMenuKeyboard } from "../utils/keyboards";
+import { userModel } from "../entities/user.entity";
+import { EncryptionUtil } from "../utils/encryption.util";
 
 export class AuthHandler {
   private static instance: AuthHandler;
@@ -11,7 +13,7 @@ export class AuthHandler {
     { email?: string; waitingForOTP: boolean; sid?: string }
   > = new Map();
   private readonly API_BASE_URL =
-    process.env.COPPERX_API_BASE_URL || "https://income-api.copperx.io";
+    process.env.COPPERX_API_BASE_URL || "https://income-api.copperx.io"; 
 
   private constructor() {}
 
@@ -34,9 +36,8 @@ export class AuthHandler {
       return;
     }
 
-    await ctx.reply(
-      "🔑 Let's get you logged in!\n\n" +
-        "Please enter your CopperX email address:"
+    await ctx.reply( 
+        "🔑 Please enter your CopperX email address to login:"
     );
     this.userStates.set(chatId, { waitingForOTP: false });
   }
@@ -53,14 +54,14 @@ export class AuthHandler {
         sid: response.sid,
       });
       await ctx.reply(
-        "📧 Great! I've sent a verification code to your email.\n\n" +
-          "Please enter the code to complete your login:"
+        "📧 I just sent an OTP to your email.\n\n" +
+          "Enter the code to complete your login:"
       );
     } catch (error) {
       console.error("Error requesting OTP:", error);
       await ctx.reply(
         "❌ Oops! I couldn't send the verification code.\n\n" +
-          "Please check your email address and try /login again."
+          "Please try /login again."
       );
     }
   }
@@ -85,16 +86,20 @@ export class AuthHandler {
         return;
       }
 
-      await authService.authenticateEmailOTP(
+      const response = await authService.authenticateEmailOTP(
         chatId,
         userState.email,
         otp,
         userState.sid
       );
       this.userStates.delete(chatId);
+      await userModel.create({userId:chatId.toString(), encryptedToken:EncryptionUtil.encrypt(response?.accessToken), expiresAt:response?.expireAt})
+
       await ctx.reply(
         "🎉 Successfully logged in!\n\n" +
-          "Use /profile to view your account details"
+          "Click any button below to perform an action",{
+            reply_markup: createMainMenuKeyboard()
+          }
       );
     } catch (error) {
       console.error("Error authenticating OTP:", error);
@@ -115,7 +120,7 @@ export class AuthHandler {
           "Please login to view your profile details.",
         {
           parse_mode: "Markdown",
-          reply_markup: new InlineKeyboard().text("�� Login", "login"),
+          reply_markup: new InlineKeyboard().text("🔑 Login", "login"),
         }
       );
       return;
@@ -186,62 +191,88 @@ Use /wallets to manage your wallets`;
         headers: await authService.getHeaders(chatId),
       });
 
+      if(!response.data?.data.length){
+        const message = `
+  ⚠️ *KYC not started yet* 
+
+📝 Start KYC Verification
+
+Complete KYC verification to: 
+  • Increase your transaction limits
+  • Access all platform features
+  • Enable bank withdrawals
+
+Click below to start the verification process.`;
+
+        await ctx.reply(message, {
+          parse_mode:"Markdown",
+          reply_markup: new InlineKeyboard()
+          .url("Start KYC", "https://t.me/copperx_smartbot?startapp")
+          .text("<< Back to Menu", "main_menu")
+        });
+
+        return
+      }
+
+
       const kycData = response.data.data[0];
-      const status = kycData.status.toUpperCase();
+      const status = kycData?.status.toUpperCase();
 
       let message = `
-📋 *KYC Verification Status*
+        📋 *KYC Verification Status*
 
-*Current Status:* ${this.getKYCStatusEmoji(status)} ${status}
-`;
+        *Current Status:* ${this.getKYCStatusEmoji(status)} ${status}
+        `;
 
       switch (status.toLowerCase()) {
         case "pending":
           message += `
-⏳ Your KYC verification is being processed.
-We'll notify you once the verification is complete.
+            ⏳ Your KYC verification is being processed.
+            We'll notify you once the verification is complete.
 
-*Submission Date:* ${new Date(kycData.createdAt).toLocaleDateString()}`;
+            *Submission Date:* ${new Date(kycData.createdAt).toLocaleDateString()}`;
           break;
 
         case "approved":
           message += `
-✅ Your account is fully verified!
+            ✅ Your account is fully verified!
 
-*Verification Details:*
-📅 Approved Date: ${new Date(
-            kycData.kycDetail.currentKycVerification.verifiedAt
-          ).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })}
-`;
+            *Verification Details:*
+            📅 Approved Date: ${new Date(
+                        kycData.kycDetail.currentKycVerification.verifiedAt
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+            `;
           break;
 
         case "rejected":
           message += `
-❌ Your KYC verification was not approved.
+            ❌ Your KYC verification was not approved.
 
-*Reason:* ${kycData.rejectionReason}
+            *Reason:* ${kycData.rejectionReason}
 
-Please submit new documents with the following corrections:
-${kycData.requiredCorrections.join("\n")}`;
+            Please submit new documents with the following corrections:
+            ${kycData.requiredCorrections.join("\n")}`;
           break;
 
         default:
-          message += `
-📝 *Start KYC Verification*
+           message += `
+            ⚠️ *Your KYC has not been started yet*
 
-Complete KYC verification to:
-• Increase your transaction limits
-• Access all platform features
-• Enable bank withdrawals
+            📝 *Start KYC Verification*
 
-Click below to start the verification process.`;
+            Complete KYC verification to:
+            • Increase your transaction limits
+            • Access all platform features
+            • Enable bank withdrawals
+
+            Click below to start the verification process.`;
       }
 
       const keyboard = new InlineKeyboard();
@@ -249,7 +280,7 @@ Click below to start the verification process.`;
         status.toLowerCase() === "none" ||
         status.toLowerCase() === "rejected"
       ) {
-        keyboard.text("📝 Start KYC", "start_kyc");
+        keyboard.url("📝 Start KYC", "https://t.me/someapp");
       }
       keyboard
         .text("👤 View Profile", "profile")

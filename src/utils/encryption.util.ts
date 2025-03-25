@@ -1,11 +1,11 @@
 import * as crypto from "crypto";
+import config from "../config/config"
 
 export class EncryptionUtil {
   private static readonly algorithm = "aes-256-cbc";
 
   private static getKey(): Buffer {
-    const envKey =
-      process.env.ENCRYPTION_KEY || "this-is-a-secure-32-char-encryption-key";
+    const envKey = config.encryption.key;
     if (Buffer.from(envKey).length !== 32) {
       return crypto.createHash("sha256").update(String(envKey)).digest();
     }
