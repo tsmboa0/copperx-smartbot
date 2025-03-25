@@ -49,6 +49,8 @@ Note: All other commands can also be done using natural language queries.
 
 If we are selected for the bounty, we will work with the CopperX team to implement these features seamlessly.
 
+Note: The current free Groq API is rate limited, please reduce how frequent you use the natural language queries for now. (up to 10 natural language queries per min)
+
 ### Core Technologies
 - **Backend**: Node.js
 - **AI Integration**: LangGraph
