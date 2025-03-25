@@ -9,6 +9,7 @@ With its hybrid architecture, this smartbot incorporates natural language respon
 ## ✨ Key Features
 
 - **🧠 AI-Powered Interactions**: Advanced natural language processing that allows users to manage their wallet through natural conversations. For example, "Can you check my KYC status?" or "Please display my recent transactions." Even new users can ask about CopperX, and the agent responds in natural language, like a friend who's got your back.
+Note: All other commands can also be done using natural language queries.
 
 - **📡 Multi-Modal Interface**: 
   - Traditional bot commands
