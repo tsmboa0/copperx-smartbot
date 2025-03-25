@@ -20,7 +20,7 @@ const callModel = async(state: typeof GraphState.State)=>{
         new MessagesPlaceholder("msgs")
     ]);
     const chain = prompt.pipe(LLMWithTools)
-    const result = await chain.invoke({msgs:messages, ctx:ctx, username:ctx.username});
+    const result = await chain.invoke({msgs:messages, ctx:JSON.stringify(ctx), username:ctx.username});
 
     console.log("The LLM response is: ",result)
 
@@ -31,7 +31,7 @@ const callModel = async(state: typeof GraphState.State)=>{
 const tools_node = new ToolNode(apiTools);
 
 //definr checkpoint
-const memory = new MemorySaver();
+// const memory = new MemorySaver(); //We will add persistence after acceptance.
 
 const builder = new StateGraph(GraphState)
 .addNode("call_model", callModel)
@@ -42,6 +42,4 @@ const builder = new StateGraph(GraphState)
 
  
 
-export const graph = builder.compile({
-    checkpointer: memory
-});
+export const graph = builder.compile()

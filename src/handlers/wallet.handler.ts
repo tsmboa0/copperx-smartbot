@@ -111,7 +111,10 @@ Use /setdefault to change your default wallet.`;
     if (!(await authService.isAuthenticated(chatId))) {
       await ctx.reply(
         "🔒 This feature requires login!\n\n" +
-          "Please use /login to connect your account first"
+          "Please use /login to connect your account first",
+          {
+            reply_markup: new InlineKeyboard().text("🔐 Login", "login"),
+          }
       );
       return;
     }
@@ -138,7 +141,9 @@ Use /setdefault to change your default wallet.`;
       if (!wallets || wallets.length === 0) {
         await ctx.reply(
           "💰 No wallets found.\n\n" +
-            "Please create a wallet and deposit some funds first!"
+            "Please create a wallet and deposit some funds first!",{
+              reply_markup:createBackToMenuKeyboard()
+            }
         );
         return;
       }
@@ -165,12 +170,18 @@ ${wallet.balances
 
 Use /deposit to add funds or /setdefault to change your default wallet.
     `;
-      await ctx.reply(message, { parse_mode: "Markdown" });
+      await ctx.reply(message, { parse_mode: "Markdown", reply_markup:new InlineKeyboard()
+        .text("💸 Send Money", "send_money").row()
+        .text("📥 Deposit", "deposit").row()
+        .text("« Back to Menu", "main_menu")
+       });
     } catch (error) {
       console.error("Error fetching balances:", error);
       await ctx.reply(
         "❌ Couldn't fetch your balances.\n\n" +
-          "Please try again or contact support if the issue persists"
+          "Please try again or contact support if the issue persists",{
+            reply_markup: createBackToMenuKeyboard()
+          }
       );
     }
   }

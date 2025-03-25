@@ -31,7 +31,9 @@ export class AuthHandler {
     if (await authService.isAuthenticated(chatId)) {
       await ctx.reply(
         "✅ You're already logged in!\n\n" +
-          "Use /profile to view your account details or /logout if you want to disconnect."
+          "Choose any of the buttons below to perform an action",{
+            reply_markup: createMainMenuKeyboard(true)
+          }
       );
       return;
     }
