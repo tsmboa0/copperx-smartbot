@@ -221,7 +221,7 @@ Use /deposit to add funds or /setdefault to change your default wallet.
             `\`${wallet?.walletAddress}\``,
           {
             parse_mode: "Markdown",
-            reply_markup: createMainMenuKeyboard(),
+            reply_markup: createMainMenuKeyboard(true),
           }
         );
         return;
