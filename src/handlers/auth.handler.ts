@@ -98,7 +98,7 @@ export class AuthHandler {
       await ctx.reply(
         "🎉 Successfully logged in!\n\n" +
           "Click any button below to perform an action",{
-            reply_markup: createMainMenuKeyboard()
+            reply_markup: createMainMenuKeyboard(await authService.isAuthenticated(chatId))
           }
       );
     } catch (error) {
@@ -323,7 +323,9 @@ Click below to start the verification process.`;
     await authService.logout(chatId);
     await ctx.reply(
       "👋 Successfully logged out!\n\n" +
-        "Use /login whenever you want to connect again"
+        "Use /login whenever you want to connect again", {
+          reply_markup: createMainMenuKeyboard(await authService.isAuthenticated(chatId))
+        }
     );
   }
 

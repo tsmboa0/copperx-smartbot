@@ -1,10 +1,13 @@
 import { MessagesAnnotation, Annotation } from "@langchain/langgraph";
-import { Context } from "grammy";
 
+export interface UserContext{
+    username:string,
+    userId:number
+}
 
 export const GraphState = Annotation.Root({
     ...MessagesAnnotation.spec,
-    ctx: Annotation<Context>()
+    ctx: Annotation<UserContext>()
 });
 
 

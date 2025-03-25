@@ -20,7 +20,7 @@ const callModel = async(state: typeof GraphState.State)=>{
         new MessagesPlaceholder("msgs")
     ]);
     const chain = prompt.pipe(LLMWithTools)
-    const result = await chain.invoke({msgs:messages, ctx:ctx, username:ctx.from?.first_name});
+    const result = await chain.invoke({msgs:messages, ctx:ctx, username:ctx.username});
 
     console.log("The LLM response is: ",result)
 

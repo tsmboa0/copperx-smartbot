@@ -28,7 +28,10 @@ class AgentService{
 
         const state = {
             messages: [new HumanMessage(ctx.message?.text)],
-            ctx:ctx
+            ctx:{
+                username:ctx.from.first_name,
+                userId: ctx.from.id
+            }
         }
 
         console.log("starting to call assitant agent in agent service")
